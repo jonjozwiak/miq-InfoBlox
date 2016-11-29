@@ -33,16 +33,15 @@ begin
     servername = nil || $evm.object['servername']
     username = nil || $evm.object['username']
     password = nil || $evm.object.decrypt('password')
-
-    # if ref is a url then use that one instead
-    url = ref if ref.include?('http')
-    url ||= "https://#{servername}/wapi/v1.4.1/"+"#{ref}"
+    api_version = nil || $evm.object['api_version']
+    url = "https://#{servername}/wapi/#{api_version}/"+"#{ref}"
 
     params = {
       :method=>action,
       :url=>url,
       :user=>username,
       :password=>password,
+      :verify_ssl=>false,
       :headers=>{ :content_type=>content_type, :accept=>:xml }
     }
     content_type == :json ? (params[:payload] = JSON.generate(body) if body) : (params[:payload] = body if body)

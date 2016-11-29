@@ -44,3 +44,28 @@ unzip ${PROJECT_NAME}.zip
 cd ${PROJECT_NAME}-master
 sh install.sh
 ```
+
+## Usage
+Setup Infoblox login credentials in automate.  
+
+* Automate -> Explorer
+* Datastore -> miq-Marketplace -> Integration -> Infoblox
+* On the DynamicDropDown class, click the Schema tab
+  * Configuration -> Edit the selected Schema
+  * Update the servername, user, password, and api_version to match your environment.  If this schema has dns_domain and view you will want to update those as well.  (you can get the api version from https://infoblox_fqdn/wapidoc/.  For example v1.7.1)
+* Repeat for the 'Methods' and 'StateMachines' classes
+
+Update your provisioning state machine to reference Infoblox
+* Select ManageIQ->Infrastructure->VM->Provisioning->StateMachines->VMProvision_VM->Provision VM from Template (template)
+  * If you have other domains, make certain you haven't already overridden this!  
+* Configuration -> Copy this instance (if you don't already have a copy)
+* Edit the AcquireIPAddress instance.  Point it to /Integration/Infoblox/Methods/InfoBlox_AcquireIPaddress
+
+
+Repeat for your retirement state machine
+* Go to Automate -> Explorer
+* Select ManageIQ->Infrastructure->VM->Retirement->StateMachines->VMRetirement->Default
+  * Again, if you have other domains, check for an override
+* Configuration -> Copy this instance...  (from the highest domain)
+* Edit the ReleaseIPAddress instance.  Point it to /Integration/Infoblox/Methods/InfoBlox_ReclaimIPaddress
+

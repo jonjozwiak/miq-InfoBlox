@@ -3,7 +3,7 @@
 # CFME Automate Method: Infoblox_AcquireIPAddress
 #
 # Notes: This method will request an IP Address from Infoblox and set it to the provisioning object of a VM
-# - gem requirements 'rest_client', 'xmlsimple', 'json'
+# - gem requirements 'rest_client', 'nori', 'json'
 #
 # - Parameters for $evm.root['vmdb_object_type'] = 'vm'
 #   - $evm.root['dialog_option_0_network_cidr']
@@ -31,7 +31,7 @@ begin
   # call_infoblox
   def call_infoblox(action, ref='network', body_type=:xml, body=nil)
     require 'rest_client'
-    require 'xmlsimple'
+    require 'nori'
     require 'json'
 
     servername = nil || $evm.object['servername']
@@ -62,8 +62,8 @@ begin
     else
       log(:info, "Success <- Infoblox Response:<#{response.code}>")
     end
-    # use XmlSimple to convert xml to ruby hash
-    response_hash = XmlSimple.xml_in(response)
+    # use Nori to convert xml to ruby hash
+    response_hash = Nori.new.parse(response)
     log(:info, "Inspecting response_hash: #{response_hash.inspect}")
     return response_hash
   end
@@ -113,23 +113,25 @@ begin
     ws_values = prov.options[:ws_values]
   end
 
-  #network = prov.options[:vlan]
+  network = prov.options[:vlan].uniq
 
-  network = prov.options[:networks]
+  #network = prov.options[:networks]
 
 
   log(:info, "networks: #{network.inspect}")
 
 
-
   netcount = 0
   network.each do |net|
     # Use the network_cidr to determine gateway and domain
-    log(:info, "#{net[:network]}")
-    network_cidr, netmask, gateway, domain, hostname = get_network("#{net[:network]}")
+    log(:info, "NET - #{net}")
+    network_cidr, netmask, gateway, domain, hostname = get_network("#{net}")
     network_infoblox = call_infoblox(:get)
+    network_infoblox_list = network_infoblox['list']
+    log(:info, "Inspecting network_infoblox:#{network_infoblox}")
+    log(:info, "Inspecting network_infoblox_list:#{network_infoblox_list}")
     # only pull out the network and the _ref values
-    network_infoblox_hash = Hash[*network_infoblox['value'].collect { |x| [x['network'], x['_ref'][0]] }.flatten]
+    network_infoblox_hash = Hash[*network_infoblox_list['value'].collect { |x| [x['network'], x['_ref']] }.flatten]
     raise "network_infoblox_hash returned nil" if network_infoblox_hash.nil?
     log(:info, "Inspecting network_infoblox_hash:<#{network_infoblox_hash}>")
 
@@ -141,14 +143,12 @@ begin
     log(:info, "#{next_ip}")
 
     #get the IP Address returned from Infoblox
-    ipaddr = next_ip['ips'][0]['list'][0]['value'].first
+    ipaddr = next_ip['value']['ips']['list']['value']
     log(:info, "Found next_ip:<#{ipaddr}>")
 
     body_set_recordhost = {
         :name => "#{hostname}.#{domain}",
-        :ipv4addrs =>[ {
-                           :ipv4addr => "#{ipaddr}",
-                           :configure_for_dhcp => false } ],
+        :ipv4addrs =>[ { :ipv4addr => "#{ipaddr}" } ],
     }
 
     record_host = call_infoblox(:post, 'record:host', :json, body_set_recordhost)
@@ -162,12 +162,12 @@ begin
 
 
     prov.set_option(:sysprep_spec_override, 'true')
-    #prov.set_option(:addr_mode, ["static", "Static"])
-    #prov.set_option(:ip_addr, "#{ipaddr}")
-    #prov.set_option(:subnet_mask, "#{netmask}")
-    #prov.set_option(:gateway, "#{gateway}")
-    #prov.set_network_adapter(0, {:network=>net})
-    #log(:info,"Provision object updated: [:networks=>#{prov.options[:networks].first.inspect}]")
+    prov.set_option(:addr_mode, ["static", "Static"])
+    prov.set_option(:ip_addr, "#{ipaddr}")
+    prov.set_option(:subnet_mask, "#{netmask}")
+    prov.set_option(:gateway, "#{gateway}")
+    prov.set_network_adapter(0, {:network=>net})
+    log(:info,"Provision object updated: [:networks=>#{prov.options[:networks].first.inspect}]")
 
     if netcount == 0
       prov.set_nic_settings('#{netcount}', {:ip_addr=>ipaddr, :subnet_mask=>netmask, :gateway=>gateway, :addr_mode=>["static", "Static"]})

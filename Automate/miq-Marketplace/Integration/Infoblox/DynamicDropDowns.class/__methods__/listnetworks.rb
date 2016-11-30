@@ -5,7 +5,7 @@
 # Author: Kevin Morey
 #
 # Notes: This method is executed from a Dynamic Drop-down Service Dialog that will list all Infoblox networks and display them in the service dialog
-# - gem requirements 'rest_client', 'xmlsimple', 'json'
+# - gem requirements 'rest_client', 'nori', 'json'
 # dialog_network_cidr
 #
 ###################################
@@ -27,7 +27,7 @@ begin
   # call_infoblox
   def call_infoblox(action, ref='network' )
     require 'rest_client'
-    require 'xmlsimple'
+    require 'nori'
     require 'json'
 
     servername = nil || $evm.object['servername']
@@ -50,8 +50,8 @@ begin
     raise "Failure <- Infoblox Response:<#{response.code}>" unless response.code == 200 || response.code == 201
 
     log(:info, "Success <- Infoblox Response:<#{response.code}>")
-    # use XmlSimple to convert xml to ruby hash
-    response_hash = XmlSimple.xml_in(response)
+    # use Nori to convert xml to ruby hash
+    response_hash = Nori.new.parse(response)
     log(:info, "Inspecting response_hash: #{response_hash.inspect}")
     return response_hash
   end

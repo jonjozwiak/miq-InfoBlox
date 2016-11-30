@@ -5,7 +5,7 @@
 # Author: Kevin Morey
 #
 # Notes: This method attempts to reserve a Infoblox DHCP Address
-# gem requirements: 'rest_client', 'xmlsimple', 'json'
+# gem requirements: 'rest_client', 'nori', 'json'
 #
 ###################################
 begin
@@ -27,7 +27,7 @@ begin
   # call_infoblox
   def call_infoblox(action, ref='network', content_type=:xml, body=nil )
     require 'rest_client'
-    require 'xmlsimple'
+    require 'nori'
     require 'json'
 
     servername = nil || $evm.object['servername']
@@ -48,8 +48,8 @@ begin
     log(:info, "Calling -> Infoblox: #{url} action: #{action} payload: #{params[:payload]}")
     response = RestClient::Request.new(params).execute
     raise "Failure <- Infoblox Response: #{response.code}" unless response.code == 200 || response.code == 201
-    # use XmlSimple to convert xml to ruby hash
-    response_hash = XmlSimple.xml_in(response)
+    # use Nori to convert xml to ruby hash
+    response_hash = Nori.new.parse(response)
     log(:info, "Inspecting response_hash: #{response_hash.inspect}")
     return response_hash
   end

@@ -18,13 +18,12 @@ begin
 
   def call_infoblox(action, ref='record:host', content_type=:xml, body=nil )
     require 'rest_client'
-    require 'xmlsimple'
+    require 'nori'
     require 'json'
 
     servername = nil || $evm.object['servername']
     username = nil || $evm.object['username']
     password = nil || $evm.object.decrypt('password')
-    #url = "https://#{servername}/wapi/v1.7.1/"+"#{ref}"
     api_version = nil || $evm.object['api_version']
     url = "https://#{servername}/wapi/#{api_version}/"+"#{ref}"
 
@@ -42,8 +41,8 @@ begin
     log(:info, "Inspecting response: #{response.inspect}")
     raise "Failure <- Infoblox Response: #{response.code}" unless response.code == 200 || response.code == 201 || response.code == 202 || response.code == 203
 
-    # use XmlSimple to convert xml to ruby hash
-    response_hash = XmlSimple.xml_in(response)
+    # use Nori to convert xml to ruby hash
+    response_hash = Nori.new.parse(response)
     log(:info, "Inspecting response_hash: #{response_hash.inspect}")
     return response_hash
   end

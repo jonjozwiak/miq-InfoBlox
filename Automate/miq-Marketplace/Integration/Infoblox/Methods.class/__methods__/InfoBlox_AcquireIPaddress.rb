@@ -113,7 +113,7 @@ begin
     ws_values = prov.options[:ws_values]
   end
 
-  network = prov.options[:vlan].uniq
+  network = prov.options[:vlan][1]
 
   #network = prov.options[:networks]
 
@@ -122,7 +122,7 @@ begin
 
 
   netcount = 0
-  network.each do |net|
+  #network.each do |net|
     # Use the network_cidr to determine gateway and domain
     log(:info, "NET - #{net}")
     network_cidr, netmask, gateway, domain, hostname = get_network("#{net}")
@@ -138,27 +138,24 @@ begin
     # call Infoblox to get the next available IP Address
     # query for the next available IP address
 
-    body_get_nextip = {:_function => 'next_available_ip', :num => '1'}
-    next_ip = call_infoblox(:post, network_infoblox_hash[network_cidr], nil, body_get_nextip)
-    log(:info, "#{next_ip}")
-
-    #get the IP Address returned from Infoblox
-    ipaddr = next_ip['value']['ips']['list']['value']
-    log(:info, "Found next_ip:<#{ipaddr}>")
-
     body_set_recordhost = {
         :name => "#{hostname}.#{domain}",
-        :ipv4addrs =>[ { :ipv4addr => "#{ipaddr}" } ],
+        :ipv4addrs =>[ { :ipv4addr => "func:nextavailableip:#{network_infoblox_hash[network_cidr]}", :configure_for_dhcp => false } ],
+        :comment => "CloudForms acquired at #{Time.now}",
+        :configure_for_dns => true
     }
 
-    record_host = call_infoblox(:post, 'record:host', :json, body_set_recordhost)
+    record_host = call_infoblox(:post, 'record:host?_return_fields=ipv4addrs', :json, body_set_recordhost)
     log(:info, "Infoblox returned record_host:<#{record_host}>")
+
+    # Pull out details from returned json 
+    ipaddr = record_host['value']['ipv4addrs']['list']['value']['ipv4addr']
 
     $evm.log("info", "GetIP --> NIC = #{netcount}")
     $evm.log("info", "GetIP --> IP Address =  #{ipaddr}")
     $evm.log("info", "GetIP -->  Netmask = #{netmask}")
     $evm.log("info", "GetIP -->  Gateway = #{gateway}")
-    $evm.log("info", "GetIP -->  dnsname = #{}")
+    #$evm.log("info", "GetIP -->  dnsname = #{}")
 
 
     prov.set_option(:sysprep_spec_override, 'true')
@@ -166,8 +163,8 @@ begin
     prov.set_option(:ip_addr, "#{ipaddr}")
     prov.set_option(:subnet_mask, "#{netmask}")
     prov.set_option(:gateway, "#{gateway}")
-    prov.set_network_adapter(0, {:network=>net})
-    log(:info,"Provision object updated: [:networks=>#{prov.options[:networks].first.inspect}]")
+    #prov.set_network_adapter(0, {:network=>net})
+    #log(:info,"Provision object updated: [:networks=>#{prov.options[:networks].first.inspect}]")
 
     if netcount == 0
       prov.set_nic_settings('#{netcount}', {:ip_addr=>ipaddr, :subnet_mask=>netmask, :gateway=>gateway, :addr_mode=>["static", "Static"]})
@@ -178,7 +175,7 @@ begin
     $evm.log("info", "GetIP --> #{prov.inspect}")
 
     netcount += 1
-  end
+  #end  	# network.each
 
   # Exit method
   log(:info, "CFME Automate Method Ended")

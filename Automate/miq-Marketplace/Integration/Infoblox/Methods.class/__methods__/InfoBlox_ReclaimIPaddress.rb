@@ -58,7 +58,8 @@ begin
 
   query_name_response = call_infoblox(:get, "record:host?name=#{vm.name}.#{domain_name}")
 
-  name_ref = query_name_response["value"][0]["_ref"][0]
+  #name_ref = query_name_response["value"][0]["_ref"][0]
+  name_ref = query_name_response["list"]["value"]["_ref"]
 
 
   log(:info, "Releasing ref: #{name_ref}")
